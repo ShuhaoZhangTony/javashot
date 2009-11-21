@@ -1,0 +1,13 @@
+syntax: regexp
+^lib/javassist\.jar$
+syntax: regexp
+^doc/javashot$
+syntax: regexp
+\.html$
+syntax: regexp
+\.dot$
+
+syntax: regexp
+\.css$
+syntax: regexp
+^doc/package-list$
