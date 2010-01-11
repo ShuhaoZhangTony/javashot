@@ -28,6 +28,21 @@ import javassist.NotFoundException;
  * -javaagent:<DIRECTORY_FOR_JAVASHOT_HOME>/javashot.jar
  */
 public class GraphAgent implements ClassFileTransformer {
+
+	static {
+		ClassPool classPool = ClassPool.getDefault();
+		ArrayList<String> javassitExtraClassPath = Properties.getJavassitExtraClassPath();
+		if (javassitExtraClassPath != null) {
+			for (String location : javassitExtraClassPath) {
+				try {
+					classPool.insertClassPath(location);
+				} catch (NotFoundException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+
+	}
 	/**
 	 * Array of patterns (regexp) for the classes to be instrumented; if empty no class will be instrumented. to set this parameter modify the
 	 * corresponding entry in javashot.properties file.
@@ -40,10 +55,12 @@ public class GraphAgent implements ClassFileTransformer {
 
 	public byte[] transform(ClassLoader loader, String className, Class clazz, java.security.ProtectionDomain domain, byte[] bytes) {
 		boolean enhanceClass = false;
-		for (Pattern pattern : instrumentationClassPattern) {
-			if (pattern.matcher(className.toLowerCase()).matches()) {
-				enhanceClass = true;
-				break;
+		if (instrumentationClassPattern != null) {
+			for (Pattern pattern : instrumentationClassPattern) {
+				if (pattern.matcher(className.toLowerCase()).matches()) {
+					enhanceClass = true;
+					break;
+				}
 			}
 		}
 		if (enhanceClass) {

@@ -50,12 +50,29 @@ public class Properties {
 	public static ArrayList<Pattern> getInstrumentationClassPattern() {
 		String instrumentationClassPattern = (String) properties.get("instrumentationClassPattern");
 		if (instrumentationClassPattern == null || instrumentationClassPattern.isEmpty()) {
-			return new ArrayList<Pattern>();
+			return null;
 		}
 		ArrayList<Pattern> result = new ArrayList<Pattern>();
 		StringTokenizer tokens = new StringTokenizer(instrumentationClassPattern, ",");
 		while (tokens.hasMoreElements()) {
-			result.add(Pattern.compile(tokens.nextToken().toLowerCase()));
+			result.add(Pattern.compile(tokens.nextToken().trim().toLowerCase()));
+		}
+		return result;
+	}
+
+	/**
+	 * Returns an array of locations for classes and jars required by javassit during instrumentation (if needed: specially during instrumentation of
+	 * a programs running on a web application server such as JBoss and Tomcat)
+	 */
+	public static ArrayList<String> getJavassitExtraClassPath() {
+		String instrumentationClassPattern = (String) properties.get("javassitExtraClassPath");
+		if (instrumentationClassPattern == null || instrumentationClassPattern.isEmpty()) {
+			return null;
+		}
+		ArrayList<String> result = new ArrayList<String>();
+		StringTokenizer tokens = new StringTokenizer(instrumentationClassPattern, ",");
+		while (tokens.hasMoreElements()) {
+			result.add(tokens.nextToken().trim().toLowerCase());
 		}
 		return result;
 	}
