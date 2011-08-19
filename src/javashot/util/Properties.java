@@ -23,7 +23,7 @@ public class Properties {
 	private static java.util.Properties properties = new java.util.Properties();
 	static {
 		try {
-			properties.load(new FileInputStream(System.getenv("JAVASHOT_HOME") + "/javashot.properties"));
+			properties.load(new FileInputStream(getJavashotHome() + "/javashot.properties"));
 		} catch (IOException e) {
 			e.printStackTrace();
 			throw new RuntimeException("Couldn't load javashot.properties");
@@ -35,6 +35,7 @@ public class Properties {
 	 */
 	public static String getJavashotHome() {
 		return System.getenv("JAVASHOT_HOME");
+
 	}
 
 	/**
@@ -75,5 +76,9 @@ public class Properties {
 			result.add(tokens.nextToken().trim().toLowerCase());
 		}
 		return result;
+	}
+
+	public static boolean getUseFullPackageClassName() {
+		return Boolean.parseBoolean((String) properties.get("useFullPackageClassName"));
 	}
 }

@@ -32,7 +32,7 @@ public class Graph {
 	/**
 	 * Stack used to keep track of the nodes
 	 */
-	private static Stack<String> stack = new Stack<String>();
+	private static ThreadLocal<Stack<String>> stack = new ThreadLocal<Stack<String>>();
 	/**
 	 * The first node pushed to the stack at the start of the capture, when we encounter it the next time we know that current capture has ended, so
 	 * we create another file for the next capture.
@@ -47,46 +47,62 @@ public class Graph {
 	 */
 	private static String startCaptureAt = Properties.getStartCaptureAt();
 	/**
+	 * The record the full name of the class instead of a short one
+	 */
+	private static boolean useFullPackageClassName = Properties.getUseFullPackageClassName();
+	/**
 	 * The capture is started when ever we find the class designed by startCaptureAt
 	 */
-	private static boolean captureStarted;
+	private static ThreadLocal<Boolean> captureStarted = new ThreadLocal<Boolean>();
 	/**
 	 * Sequence id of method calls
 	 */
-	private static long sequenceId;
+	private static ThreadLocal<Long> sequenceId = new ThreadLocal<Long>();
+	/*
+	 * Thread identifier
+	 */
+	private static long threadIdGenerator = 1;
+	private static ThreadLocal<Long> threadIdentifier = new ThreadLocal<Long>();
 	/**
 	 * The .dot file containing the description of the graph in the dot language. This file can be viewed by tools from (http://www.graphviz.org/) and
 	 * also manipulated by standard unix tools such as grep, awk, ... to extract the desired information from a huge file
 	 */
-	private static BufferedWriter dotFile;
+	private static ThreadLocal<BufferedWriter> dotFile = new ThreadLocal<BufferedWriter>();
 
 	public static void pushNode(String className, String methodeName) {
-		String classShortName = className.substring(className.lastIndexOf('.') + 1);
-		if (!captureStarted && startCaptureAt.equalsIgnoreCase(classShortName)) {
+		if (!useFullPackageClassName) {
+			className = className.substring(className.lastIndexOf('.') + 1);
+		}
+		if ((captureStarted.get() == null || !captureStarted.get().booleanValue()) && startCaptureAt.equalsIgnoreCase(className)) {
+			if (threadIdentifier.get() == null) {
+				threadIdentifier.set(threadIdGenerator++);
+			}
 			try {
 				String todayDir = createTodayDirectory();
 				Calendar today = Calendar.getInstance();
-				Graph.dotFile = new BufferedWriter(new FileWriter(captureHome + todayDir + startCaptureAt + "_" + String.format("%tH", today)
-						+ String.format("%tM", today) + String.format("%tS", today) + ".dot"));
-				dotFile.write("digraph " + startCaptureAt + "{\n");
+				stack.set(new Stack<String>());
+				Graph.dotFile.set(new BufferedWriter(new FileWriter(captureHome + todayDir + "Thread[" + threadIdentifier.get() + "]"
+						+ startCaptureAt + "_" + String.format("%tH", today) + String.format("%tM", today) + String.format("%tS", today) + ".dot")));
+				dotFile.get().write("digraph " + startCaptureAt + "{\n");
 			} catch (IOException e) {
 				e.printStackTrace();
 				throw new RuntimeException("ERROR");
 			}
-			captureStarted = true;
-			sequenceId = 1;
-			stack.push(START);
+			captureStarted.set(Boolean.TRUE);
+			sequenceId.set((long) 1);
+			stack.get().push(START);
 		}
-		if (captureStarted) {
+		if (captureStarted.get() != null && captureStarted.get().booleanValue()) {
 			try {
-				StringBuffer buffer = new StringBuffer(stack.peek()).append("->").append(classShortName).append("[label=\"").append(sequenceId++)
-						.append(":").append(methodeName).append("\"]\n");
-				dotFile.write(buffer.toString());
+				StringBuffer buffer = new StringBuffer(stack.get().peek()).append("->").append(className).append("[label=\"")
+						.append(sequenceId.get()).append(":").append(methodeName).append("\"]\n");
+				sequenceId.set(sequenceId.get() + 1);
+				dotFile.get().write(buffer.toString());
 			} catch (IOException e) {
 				e.printStackTrace();
 				throw new RuntimeException("ERROR");
 			}
-			stack.push(classShortName);
+			stack.get().push(className);
 		}
 	}
 
@@ -102,21 +118,22 @@ public class Graph {
 	}
 
 	public static void popNode() {
-		if (captureStarted) {
-			String node = stack.pop();
+		if (captureStarted.get() != null && captureStarted.get().booleanValue()) {
+			String node = stack.get().pop();
 			try {
-				StringBuffer buffer = new StringBuffer(node).append("->").append(stack.peek()).append("[label=\"").append(sequenceId++).append(
-						"\", style=dashed]\n");
-				dotFile.write(buffer.toString());
+				StringBuffer buffer = new StringBuffer(node).append("->").append(stack.get().peek()).append("[label=\"").append(sequenceId.get())
+						.append("\", style=dashed]\n");
+				sequenceId.set(sequenceId.get() + 1);
+				dotFile.get().write(buffer.toString());
 			} catch (IOException e1) {
 				e1.printStackTrace();
 				throw new RuntimeException("ERROR");
 			}
-			if (START.equalsIgnoreCase(stack.peek())) {
-				captureStarted = false;
+			if (START.equalsIgnoreCase(stack.get().peek())) {
+				captureStarted.set(Boolean.FALSE);
 				try {
-					dotFile.write("}");
-					Graph.dotFile.close();
+					dotFile.get().write("}");
+					Graph.dotFile.get().close();
 				} catch (IOException e) {
 					e.printStackTrace();
 					throw new RuntimeException("ERROR");
